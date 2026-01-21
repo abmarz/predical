@@ -1,0 +1,673 @@
+<!-- In the spirit of integrity and transparency, the following code includes elements that have been adjusted/improved with generative AI tools. -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Deficit Predictor • MLR Model</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="icon" href="./favicon.png?v=1">
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#121a2f;
+      --card: rgba(255,255,255,.07);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.72);
+      --muted2: rgba(255,255,255,.58);
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --radius: 18px;
+
+      --good: rgba(52, 211, 153, .95);  /* green */
+      --bad: rgba(248, 113, 113, .95);  /* red */
+      --warn: rgba(251, 191, 36, .95);  /* amber */
+      --blue: rgba(56,189,248,.95);
+      --indigo: rgba(99,102,241,.9);
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(99,102,241,.30), transparent 55%),
+        radial-gradient(1000px 650px at 90% 20%, rgba(56,189,248,.22), transparent 55%),
+        radial-gradient(900px 650px at 40% 95%, rgba(52,211,153,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+    }
+
+    .wrap{ max-width: 980px; margin: 0 auto; padding: 42px 18px 70px; }
+
+    header{ display:flex; flex-direction:column; gap:12px; margin-bottom: 18px; }
+
+    .badge{
+      display:inline-flex; gap:10px; align-items:center;
+      padding: 8px 12px; border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      border-radius: 999px; width: fit-content;
+      font-size: 13px; color: var(--muted);
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background: var(--blue); box-shadow: 0 0 0 4px rgba(56,189,248,.15); }
+
+    h1{ margin:0; font-size: clamp(28px, 3.2vw, 42px); letter-spacing: -0.02em; line-height: 1.08; }
+
+    .subtitle{
+      margin:0; color: var(--muted);
+      font-size: 15.5px; line-height: 1.55; max-width: 80ch;
+    }
+
+    .grid{
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+      gap: 18px;
+      align-items: start;
+      margin-top: 18px;
+    }
+
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    aside.card{
+      position: sticky;
+      top: 24px;
+    }
+    .card .inner{ padding: 18px; }
+    .card h2{ margin:0 0 8px 0; font-size: 16px; letter-spacing: -0.01em; }
+
+    .muted{ color: var(--muted); font-size: 13.5px; line-height: 1.55; margin: 0; }
+
+    .form{ display:grid; gap: 12px; margin-top: 14px; }
+
+    .field{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .row{ display:flex; justify-content:space-between; align-items:flex-start; gap: 10px; margin-bottom: 8px; }
+
+    label{ font-weight: 700; font-size: 13px; letter-spacing: .01em; }
+
+    .help{ color: var(--muted2); font-size: 12px; line-height: 1.35; margin: 0; max-width: 56ch; }
+
+    .unit{
+      color: var(--muted2);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.12);
+      white-space:nowrap;
+    }
+
+    input, select{
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(10,15,28,.55);
+      color: var(--text);
+      outline: none;
+      font-size: 15px;
+    }
+    input::placeholder{ color: rgba(255,255,255,.35); }
+    input:focus, select:focus{
+      border-color: rgba(56,189,248,.6);
+      box-shadow: 0 0 0 4px rgba(56,189,248,.18);
+    }
+
+    .selectWrap{
+      position: relative;
+    }
+    .selectWrap select{
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding-right: 44px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .selectWrap:after{
+      content:"";
+      position:absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      opacity: .9;
+      background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='rgba(255,255,255,.75)' d='M5.3 7.3a1 1 0 0 1 1.4 0L10 10.6l3.3-3.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 0-1.4z'/%3E%3C/svg%3E");
+      pointer-events:none;
+    }
+
+    .two{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 650px){
+      .grid{
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    .actions{ display:flex; gap: 10px; margin-top: 6px; }
+    .btn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight: 750;
+      font-size: 14px;
+      width:100%;
+      transition: transform .05s ease, filter .2s ease, background .2s ease;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: linear-gradient(135deg, var(--blue), var(--indigo));
+      border-color: rgba(255,255,255,.12);
+      color: rgba(10,15,28,.95);
+    }
+    .btn.primary:hover{ filter: brightness(1.03); }
+
+    /* Right panel */
+    .result{ display:flex; flex-direction:column; gap: 12px; }
+    .big{
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+    }
+    .kpi{ display:flex; justify-content:space-between; align-items:flex-end; gap: 12px; }
+    .kpi .title{ font-size: 13px; color: var(--muted2); margin:0 0 6px 0; }
+    .kpi .value{ font-size: clamp(34px, 4vw, 48px); letter-spacing: -0.02em; margin:0; line-height: 1; }
+    .kpi .pill{
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.12);
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .msg{ font-size: 13.5px; color: var(--muted); line-height: 1.55; margin: 0; }
+
+    .pill.good{ color: var(--good); border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.10); }
+    .pill.bad{ color: var(--bad); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.10); }
+    .pill.warn{ color: var(--warn); border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.10); }
+
+    .warnbox{
+      border-radius: 16px;
+      border: 1px solid rgba(251,191,36,.35);
+      background: rgba(251,191,36,.10);
+      padding: 14px;
+    }
+    .warnbox strong{ color: var(--warn); }
+
+    details{
+      border-top: 1px solid rgba(255,255,255,.12);
+      padding-top: 12px;
+      margin-top: 10px;
+    }
+    summary{
+      cursor:pointer;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .eqCard{
+      margin-top: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.10);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    pre{
+      margin:0;
+      overflow:auto;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,15,28,.45);
+      color: rgba(255,255,255,.86);
+      font-size: 12.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 12.5px;
+      color: rgba(255,255,255,.78);
+    }
+    th, td{
+      text-align:left;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    th{ color: rgba(255,255,255,.88); font-weight: 800; }
+
+    .moreModel{
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .linkBtn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.90);
+      text-decoration:none;
+      font-weight: 750;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .linkBtn:hover{ filter: brightness(1.05); }
+    .linkIcon{
+      width: 18px; height: 18px;
+      background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='rgba(56,189,248,.95)' d='M6 2h5l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm5 1.5V7h3.5L11 3.5z'/%3E%3C/svg%3E");
+    }
+
+    .footer{
+      margin-top: 18px;
+      color: rgba(255,255,255,.45);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="badge"><span class="dot"></span>Deficit Estimator (MLR) • Public Demo</div>
+      <h1>Calorie Deficit Predictor</h1>
+      <p class="subtitle">
+        This page estimates your <strong>calorie deficit</strong> using a pre-fit OLS multiple linear regression model.
+        A <strong>positive</strong> result means a predicted deficit (good). A <strong>negative</strong> result means a predicted surplus.
+        This is an educational demo, not medical or nutrition advice. See README <a href="https://github.com/abmarz/predical">github.com/abmarz/predical</a> for more info.
+      </p>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: FORM -->
+      <section class="card">
+        <div class="inner">
+          <h2>Inputs</h2>
+          <p class="muted">
+            Use the same units/scales described under each variable to ensure the most precise and accurate prediction
+          </p>
+
+          <div class="form">
+            <div class="field">
+              <div class="row">
+                <div>
+                  <label for="duration">Session Duration</label>
+                  <p class="help">Length of the session(s) today (collective if more than one) in hours (1.5 is an hour and a half, 1.75 is an hour and 45 minutes, and so on and so forth) This is zero if you haven't trained today.</p>
+                </div>
+                <div class="unit">hours</div>
+              </div>
+              <input id="duration" type="number" step="any" placeholder="e.g., 1.0" />
+            </div>
+
+            <div class="field">
+              <div class="row">
+                <div>
+                  <label for="workout">Workout Type</label>
+                  <p class="help">Primary workout type for the session (Cardio is the reference level so if you only did cardio this is None/Other) For multiple types (i.e. HIIT and Strength) in one day, select the longest or most frequent.</p>
+                </div>
+                <div class="unit">category</div>
+              </div>
+              <div class="selectWrap">
+                <select id="workout">
+                  <option value="none">None / Other</option>
+                  <option value="hiit">HIIT</option>
+                  <option value="strength">Strength</option>
+                  <option value="yoga">Yoga</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="two">
+              <div class="field">
+                <div class="row">
+                  <div>
+                    <label for="weight">Weight</label>
+                    <p class="help">Body weight at the time of the session.</p>
+                  </div>
+                  <div class="unit">lbs</div>
+                </div>
+                <input id="weight" type="number" step="any" placeholder="e.g., 155" />
+              </div>
+
+              <div class="field">
+                <div class="row">
+                  <div>
+                    <label for="age">Age</label>
+                    <p class="help">Age in years. Floats won't make much of a difference here so don't even think about it ;p .</p>
+                  </div>
+                  <div class="unit">years</div>
+                </div>
+                <input id="age" type="number" step="any" placeholder="e.g., 21" />
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="row">
+                <div>
+                  <label for="experience">Experience Level</label>
+                  <p class="help">
+                    Scale of <strong>1–5</strong>: 1 = not experienced (need help), 3 = moderately experienced (can manage but with doubts),
+                    5 = very experienced (confident in sessions).
+                  </p>
+                </div>
+                <div class="unit">categorical</div>
+              </div>
+
+              <div class="selectWrap">
+                <select id="experience">
+                  <option value="1">1 — Not experienced</option>
+                  <option value="2">2 — Very slighlty experienced</option>
+                  <option value="3" selected>3 — Moderately experienced</option>
+                  <option value="4">4 — Experienced</option>
+                  <option value="5">5 — Very experienced</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <div class="row">
+                  <div>
+                    <label for="frequency">Workout Frequency</label>
+                    <p class="help">Number of workout days per week. Floats actually help here because sometimes we get in a solid workout but a half-baked one as well. Use the precise number of workouts per week as a baseline and go holistically as to what decimal point to add on to that baseline</p>
+                  </div>
+                  <div class="unit">days/week</div>
+                </div>
+                <input id="frequency" type="number" step="any" placeholder="e.g., 4.3" />
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="row">
+                <div>
+                  <label for="exercise">Physical Exercise (Level)</label>
+                  <p class="help">
+                    Dataset feature on a <strong>1–4 categorical scale</strong>. The dataset this model is trained on unfortunately did not provide a definition for this variable.
+                    The closest inference as to what it denotes is the level that best matches general daily activity (outside the workout type). 1 being sedentary, 4 being very active.
+                  </p>
+                </div>
+                <div class="unit">categorical</div>
+              </div>
+
+              <div class="selectWrap">
+                <select id="exercise">
+                  <option value="1">1 — Sedentary</option>
+                  <option value="2">2 — Moderate-Low</option>
+                  <option value="3">3 — Moderate-High</option>
+                  <option value="4">4 — High</option>
+                </select>
+              </div>
+            </div>
+
+
+            <div class="two">
+              <div class="field">
+                <div class="row">
+                  <div>
+                    <label for="protein">Proteins</label>
+                    <p class="help">Protein intake in grams today.</p>
+                  </div>
+                  <div class="unit">g</div>
+                </div>
+                <input id="protein" type="number" step="any" placeholder="e.g., 140" />
+              </div>
+
+              <div class="field">
+                <div class="row">
+                  <div>
+                    <label for="sugar">Sugars</label>
+                    <p class="help">Sugar intake in grams today.</p>
+                  </div>
+                  <div class="unit">g</div>
+                </div>
+                <input id="sugar" type="number" step="any" placeholder="e.g., 35" />
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn primary" onclick="predict()">Predict Deficit</button>
+              <button class="btn" onclick="resetForm()">Reset</button>
+            </div>
+          </div>
+
+          <div class="footer">
+            Hosted as a static page (no server). Anyone can use this from a shared link. Share and help your friends out if this helped you :]
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: RESULTS + DISCLAIMERS -->
+      <aside class="card">
+        <div class="inner result">
+          <h2>Result</h2>
+
+          <div class="big">
+            <div class="kpi">
+              <div>
+                <p class="title">Predicted calorie deficit</p>
+                <p class="value" id="caloriesValue">—</p>
+              </div>
+              <div class="pill" id="qualityPill">Awaiting inputs</div>
+            </div>
+            <p class="msg" id="resultMsg">
+              Enter your variables and click <strong>Predict Deficit</strong>.
+            </p>
+          </div>
+
+          <div class="warnbox">
+            <strong>Disclaimer of Accuracy & Liability</strong>
+            <p class="msg" style="margin-top:8px;">
+              This website provides estimates produced by a statistical model and is provided “as is” and “as available.”
+              Outputs may be inaccurate, incomplete, or not applicable to your situation. By using this website, you assume
+              all risk and responsibility for any decisions or actions taken based on the output. The creator and any contributors
+              disclaim all warranties (express or implied) and are not liable for any direct, indirect, incidental, consequential,
+              special, or punitive damages arising from use of, or reliance on, this website. This is not medical, fitness, or nutritional advice.
+              Consult a qualified professional for guidance.
+            </p>
+          </div>
+
+          <details>
+            <summary>See model details</summary>
+
+            <div class="eqCard">
+              <p class="muted" style="margin-bottom:10px;">
+                Workout Type is encoded as indicator variables: HIIT=1 if selected (else 0), Strength=1 if selected (else 0), Yoga=1 if selected (else 0). Cardio is the reference variable.
+              </p>
+
+              <pre><code>Predicted Deficit (kcal) =
+  719.213
+  − 1143.434 × SessionDuration
+  − 560.446  × HIIT
+  − 199.587  × Strength
+  + 248.646  × Yoga
+  + 21.539   × Weight
+  − 124.703  × ExperienceLevel
+  + 44.858   × WorkoutFrequency
+  + 12.469   × PhysicalExercise
+  + 0.204    × Proteins
+  − 0.251    × Sugars
+  − 0.298    × Age</code></pre>
+
+              <table aria-label="Model coefficients">
+                <thead>
+                  <tr><th>Variable</th><th>Coefficient</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Intercept</td><td>719.213</td></tr>
+                  <tr><td>Session Duration</td><td>-1143.434</td></tr>
+                  <tr><td>Workout (HIIT)</td><td>-560.446</td></tr>
+                  <tr><td>Workout (Strength)</td><td>-199.587</td></tr>
+                  <tr><td>Workout (Yoga)</td><td>+248.646</td></tr>
+                  <tr><td>Weight</td><td>+21.539</td></tr>
+                  <tr><td>Experience Level</td><td>-124.703</td></tr>
+                  <tr><td>Workout Frequency</td><td>+44.858</td></tr>
+                  <tr><td>Physical Exercise</td><td>+12.469</td></tr>
+                  <tr><td>Proteins</td><td>+0.204</td></tr>
+                  <tr><td>Sugars</td><td>-0.251</td></tr>
+                  <tr><td>Age</td><td>-0.298</td></tr>
+                </tbody>
+              </table>
+
+              <div class="moreModel">
+                <p class="muted" style="margin:0;">
+                  <strong>More about the model</strong><br/>
+                  Read the full report to learn more about variable definitions, training details, assumptions, and limitations.
+                </p>
+
+                <a class="linkBtn" href="report.pdf" target="_blank" rel="noopener">
+                  <span class="linkIcon"></span>
+                  Open the report (PDF)
+                </a>
+
+                <p class="muted" style="margin:0;">
+                  <strong>Author</strong><br/>
+                  Built by <strong>Abdullah Al Marzouq</strong>
+                </p>
+
+                <a class="linkBtn"
+                  href="https://abmarz.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Author website">
+                  <span class="linkIcon"></span>
+                  Visit my personal website
+                </a>
+              </div>
+            </div>
+          </details>
+
+          <div class="footer">
+            Interpretation: <span style="color:var(--good); font-weight:800;">positive</span> = predicted deficit,
+            <span style="color:var(--bad); font-weight:800;">negative</span> = predicted surplus.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // --- Coefficients ---
+    const B0 = 719.213;
+    const B_duration   = -1143.434;
+    const B_hiit       = -560.446;
+    const B_strength   = -199.587;
+    const B_yoga       =  248.646;
+    const B_weight     =   21.539;
+    const B_experience = -124.703;
+    const B_frequency  =   44.858;
+    const B_exercise   =   12.469;
+    const B_protein    =    0.204;
+    const B_sugar      =   -0.251;
+    const B_age        =   -0.298;
+
+    const $ = (id) => document.getElementById(id);
+    const toNum = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+
+    function setPill(kind, text){
+      const pill = $("qualityPill");
+      pill.className = "pill " + (kind || "");
+      pill.textContent = text;
+    }
+
+    function predict(){
+      const duration   = toNum($("duration").value);
+      const workout    = $("workout").value;
+
+      const weight     = toNum($("weight").value);
+      const age        = toNum($("age").value);
+      const experience = Number($("experience").value || 3);
+      const frequency  = toNum($("frequency").value);
+      const exercise   = Number($("exercise").value || 1); // default 1
+      const protein    = toNum($("protein").value);
+      const sugar      = toNum($("sugar").value);
+
+      const HIIT     = workout === "hiit" ? 1 : 0;
+      const Strength = workout === "strength" ? 1 : 0;
+      const Yoga     = workout === "yoga" ? 1 : 0;
+
+      // Model output is treated as DEFICIT
+      const deficit =
+        B0 +
+        B_duration   * duration +
+        B_hiit       * HIIT +
+        B_strength   * Strength +
+        B_yoga       * Yoga +
+        B_weight     * weight +
+        B_experience * experience +
+        B_frequency  * frequency +
+        B_exercise   * exercise +
+        B_protein    * protein +
+        B_sugar      * sugar +
+        B_age        * age;
+
+      const rounded = Math.round(deficit);
+      $("caloriesValue").textContent = `${Math.abs(rounded)} kcal`;
+
+      // Input sanity warnings
+      const warnings = [];
+      if (duration < 0) warnings.push("Session duration can’t be negative.");
+      if (weight < 0) warnings.push("Weight can’t be negative.");
+      if (age < 0) warnings.push("Age can’t be negative.");
+      if (protein < 0 || sugar < 0) warnings.push("Nutrition values can’t be negative.");
+      if (frequency < 0 || exercise < 0) warnings.push("Activity values can’t be negative.");
+
+      if (warnings.length){
+        setPill("warn", "Check inputs");
+        $("resultMsg").textContent = warnings.join(" ");
+        return;
+      }
+
+      // Deficit meaning + color
+      if (rounded >= 0){
+        setPill("good", "Deficit predicted");
+        $("resultMsg").innerHTML =
+          `The model predicts a <strong style="color:var(--good);">calorie deficit</strong> of about <strong>${rounded}</strong> kcal
+           for the given inputs.`;
+      } else {
+        setPill("bad", "Surplus predicted");
+        $("resultMsg").innerHTML =
+          `The model predicts a <strong style="color:var(--bad);">calorie surplus</strong> (not a deficit) of about
+           <strong>${Math.abs(rounded)}</strong> kcal for the given inputs.`;
+      }
+    }
+
+    function resetForm(){
+      ["duration","weight","age","experience","frequency","protein","sugar"].forEach(id => $(id).value = "");
+      $("workout").value = "none";
+      $("experience").value = "3";;
+      $("caloriesValue").textContent = "—";
+      setPill("", "Awaiting inputs");
+      $("resultMsg").innerHTML = 'Enter your variables and click <strong>Predict Deficit</strong>.';
+    }
+
+  </script>
+</body>
+</html>
